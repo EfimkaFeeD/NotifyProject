@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/windows,linux,database,archives,python,venv,virtualenv,dotenv,visualstudiocode,pycharm+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,database,archives,python,venv,virtualenv,dotenv,visualstudiocode,pycharm+all
 
+# TOKENS and API keys
+discord_keys.py
+
 ### Archives ###
 # It's better to unpack these files and commit the raw source because
 # git has its own built in compression methods.
