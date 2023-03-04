@@ -14,8 +14,8 @@
     │  ├─ telegram/         Исходный код для бота Telegram
     |  |  ├─ assets/        Материалы для бота Telegram
     |  |  ├─ utils/         Функции для бота Telegram
-    ├─ telegram.py          Запуск бота для Telegram
-    └─ discord.py           Запуск бота для Discord
+    ├─ tg.py          Запуск бота для Telegram
+    └─ ds.py           Запуск бота для Discord
 
 ## Планируемые возможности
 
