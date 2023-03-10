@@ -1,28 +1,30 @@
-class User:
-    def __init__(self, chat_id, message_id=-1, player_id=-1, liked=None, playlists=None, language=None):
-        self.chat_id = chat_id
-        self.player_id = player_id
-        self.message_id = message_id
-        self.liked = self.unpack_liked(liked)
-        self.language = language
-        self.playlists = self.unpack_playlists(playlists)
+import sqlalchemy
+from telegram.utils.connect_creater import SqlAlchemyBase
 
-    @staticmethod
-    def unpack_playlists(data):
-        if not data:
+
+class User(SqlAlchemyBase):
+    __tablename__ = 'users'
+    chat_id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    player_id = sqlalchemy.Column(sqlalchemy.Integer, default=-1)
+    message_id = sqlalchemy.Column(sqlalchemy.Integer, default=-1)
+    liked = sqlalchemy.Column(sqlalchemy.String, default='')
+    language = sqlalchemy.Column(sqlalchemy.String, default='')
+    playlists = sqlalchemy.Column(sqlalchemy.String, default='')
+
+    def get_playlists(self):
+        if not self.playlists:
             return {}
         response = {}
-        for pl in data.split(';;'):
+        for pl in self.playlists.split(';;'):
             name = pl.split('::')[0]
             traks = pl.split('::')[1].split(',,')
             response[name] = traks
         return response
 
-    @staticmethod
-    def unpack_liked(data):
-        if not data:
+    def get_liked(self):
+        if not self.liked:
             return []
-        return data.split(',,')
+        return self.liked.split(',,')
 
     def pack_liked(self):
         return ' '.join(self.liked)
