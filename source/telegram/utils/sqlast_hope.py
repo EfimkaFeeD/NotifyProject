@@ -10,6 +10,7 @@ def create_user(chat_id):
     user.chat_id = chat_id
     session.add(user)
     session.commit()
+    users[chat_id] = user
 
 
 def set_user_attr(chat_id, attr_name, value):

@@ -1,0 +1,10 @@
+{
+  "meta": {"name": "\uD83C\uDDEC\uD83C\uDDE7English\uD83C\uDDEC\uD83C\uDDE7"},
+  "data": {"welcome": "Successful!", "home": "Home\uD83C\uDFE0", "settings": "Settings⚙️",
+    "language": "Language\uD83C\uDF10", "liked": "Favorites❤️", "playlists": "Playlists\uD83D\uDCC1", "music": "Music\uD83C\uDFB6",
+  "home_text": "This is main menu. Choose what you want to do:", "settings_text": "Select needed setting:", "set_lang_text": "Select new language:", "back": "Back\uD83D\uDD19",
+  "music_main_text": "Welcome to music world!", "playlists_text": "It is your playlists", "playlist_text": "Chosen playlist: ", "liked_text": "It is your liked tracks",
+    "empty_playlists": "You have no playlists yet", "new_pl": "➕Create new", "search": "Search\uD83D\uDD0E", "search_text": "Enter search query or Yandex.Music link in message",
+  "search_response_text": "Search results", "now_played": "Now played: ", "close": "Close❌", "lsr": "Last search results",
+    "empty_response": "Not results", "downloaded": "Track downloaded"}
+}

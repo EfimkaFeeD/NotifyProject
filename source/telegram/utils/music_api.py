@@ -7,13 +7,32 @@ conn.init()
 
 
 def search(query):
+    track_id = parse_link(query)
+    if track_id:
+        return [{"id": track_id, "name": get_metadata(track_id)}]
     response = []
-    answer = conn.search(text=query, type_='track')
-    for item in answer[:10]:
-        response.append({"id": item.id, "name": item.title, "artists": ", ".join([i.name for i in item.artists])})
+    answer = conn.search(text=query, type_='all')
+    if not answer.tracks:
+        return []
+    for item in answer.tracks.results[:10]:
+        response.append({"id": item.id, "name": f'{item.title} - {", ".join([i.name for i in item.artists])}'})
+    return response
 
 
 def get_link(track_id):
-    track = yandex_music.Track(id=track_id, client=conn)
-    track.get_download_info()
-    return track.download_info[0].get_direct_link()
+    return conn.tracks_download_info(track_id=track_id, get_direct_links=True)[0].direct_link
+
+
+def get_metadata(track_id):
+    track = conn.tracks([track_id])[0]
+    return f'{track.title} - {", ".join([i.name for i in track.artists])}'
+
+
+def parse_link(link):
+    if not link.startswith('https://music.yandex.ru/'):
+        return False
+    try:
+        re = link.split('/')[6]
+        return int(re[:re.index('?')])
+    except IndexError and TypeError:
+        return False

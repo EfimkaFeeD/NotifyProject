@@ -1,6 +1,10 @@
 {
   "meta": {"name": "\uD83C\uDDF7\uD83C\uDDFAРусский\uD83C\uDDF7\uD83C\uDDFA"},
   "data": {"welcome": "Успешно!", "home": "Главное меню\uD83C\uDFE0", "settings": "Настройки⚙️",
-    "language": "Язык\uD83C\uDF10", "liked": "Избранное❤️", "playlists": "Плейлисты\uD83C\uDFB6", "music": "Музыка\uD83C\uDFB6",
-  "home_text": "Это главное меню. Выберите, чем бы вы хотели заняться", "settings_text": "Выберите нужный пункт настроек:", "set_lang_text":  "Выберите новый язык:", "back": "Назад\uD83D\uDD19"}
+    "language": "Язык\uD83C\uDF10", "liked": "Избранное❤️", "playlists": "Плейлисты\uD83D\uDCC1", "music": "Музыка\uD83C\uDFB6",
+  "home_text": "Это главное меню. Выберите, чем бы вы хотели заняться", "settings_text": "Выберите нужный пункт настроек:", "set_lang_text":  "Выберите новый язык:", "back": "Назад\uD83D\uDD19",
+  "music_main_text": "Добро пожаловать в мир музыки!", "playlists_text": "Это ваши плейлисты", "playlist_text": "Выбранный плейлист: ", "liked_text": "Это ваши избранные треки",
+    "empty_playlists": "Вы пока не создали ни одного плейлиста", "new_pl": "➕Новый плейлист", "search": "Поиск\uD83D\uDD0E", "search_text": "Введите поисковый запрос или ссылку на трек в Яндекс.Музыке сообщением",
+  "search_response_text": "Результаты поиска", "now_played": "Сейчас играет: ", "close": "Закрыть❌", "lsr": "Результаты последнего поиска",
+    "empty_response": "Нет результатов", "downloaded": "Трек загружен"}
 }

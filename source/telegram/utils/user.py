@@ -26,8 +26,10 @@ class User(SqlAlchemyBase):
             return []
         return self.liked.split(',,')
 
-    def pack_liked(self):
-        return ' '.join(self.liked)
+    def pack_liked(self, data):
+        self.liked = ' '.join(data)
+        return self.liked
 
-    def pack_playlists(self):
-        return ';;'.join([f'{key}::{",,".join(elem)}'for key, elem in self.playlists.items()])
+    def pack_playlists(self, data):
+        self.playlists = ';;'.join([f'{key}::{",,".join([str(i) for i in elem])}'for key, elem in data.items()])
+        return self.playlists
