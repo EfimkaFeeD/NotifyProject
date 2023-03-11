@@ -50,6 +50,7 @@ def main_menu(call):
                                           callback_data='settings'))
     bot.edit_message_text(chat_id=user.chat_id, message_id=call.message.id,
                           text=languages[user.language].get('home_text', TE), reply_markup=markup)
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='home')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'settings')
@@ -60,6 +61,7 @@ def settings(call):
     markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE), callback_data='home'))
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
                           text=languages[user.language].get('settings_text', TE), reply_markup=markup)
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='settings')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'set_lang')
@@ -72,6 +74,7 @@ def set_language(call):
                types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
                           text=languages[user.language].get('set_lang_text', TE), reply_markup=markup)
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='lang')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'music')
@@ -84,6 +87,7 @@ def music(call):
     markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE), callback_data='home'))
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id,
                           text=languages[user.language].get('music_main_text', TE), reply_markup=markup)
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='music')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'playlists')
@@ -100,6 +104,7 @@ def playlists_view(call):
                types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=markup,
                           text=languages[user.language].get('playlists_text' if u else 'empty_playlists', TE))
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='playlists')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('pl:'))
@@ -107,14 +112,37 @@ def playlist_view(call):
     user = sqlast_hope.users[call.message.chat.id]
     markup = types.InlineKeyboardMarkup()
     pl_name = ":".join(call.data.split(':')[1:])
-    for track in user.get_playlists()[pl_name]:
-        markup.row(types.InlineKeyboardButton(music_api.get_metadata(track), callback_data=f"play:{track}::{pl_name}"))
+    u = False
+    for row, track in enumerate(user.get_playlists()[pl_name]):
+        u = True
+        like_b = types.InlineKeyboardButton('❤️' if track in user.get_liked() else '🤍',
+                                            callback_data=f'like:{track}:{row},1')
+        markup.row(types.InlineKeyboardButton(music_api.get_metadata(track), callback_data=f"play:{track}::{pl_name}"),
+                   like_b)
     markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE),
                                           callback_data='playlists'),
                types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
     text = pl_name if pl_name != 'sysdata--lsr' else languages[user.language].get("lsr", TE)
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=markup,
-                          text=languages[user.language].get("playlist_text", TE) + text)
+                          text=(languages[user.language].get("playlist_text", TE) + text) if u else
+                          languages[user.language].get("empty_playlist", TE))
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'liked')
+def liked_view(call):
+    user = sqlast_hope.users[call.message.chat.id]
+    markup = types.InlineKeyboardMarkup()
+    u = False
+    for row, elem in enumerate(user.get_liked()):
+        like_b = types.InlineKeyboardButton('❤️', callback_data=f'like:{elem}:{row},1')
+        markup.row(types.InlineKeyboardButton(music_api.get_metadata(elem), callback_data=f'play:{elem}::liked'),
+                   like_b)
+        u = True
+    markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE), callback_data='music'),
+               types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=markup,
+                          text=languages[user.language].get('liked_text' if u else 'empty_liked', TE))
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='liked')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'search')
@@ -126,6 +154,7 @@ def search(call):
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=markup,
                           text=languages[user.language].get('search_text', TE))
     bot.register_next_step_handler(message=call.message, callback=handle_search)
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='search')
 
 
 def handle_search(message):
@@ -137,9 +166,11 @@ def handle_search(message):
     markup = types.InlineKeyboardMarkup()
     response = music_api.search(message.text)
     u = False
-    for elem in response:
+    for row, elem in enumerate(response):
         u = True
-        markup.row(types.InlineKeyboardButton(elem['name'], callback_data=f"play:{elem['id']}::sysdata--lsr"))
+        like_b = types.InlineKeyboardButton('❤️' if str(elem['id']) in user.get_liked() else '🤍',
+                                            callback_data=f'like:{elem["id"]}:{row},1')
+        markup.row(types.InlineKeyboardButton(elem['name'], callback_data=f"play:{elem['id']}::sysdata--lsr"), like_b)
     markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE),
                                           callback_data='search'),
                types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
@@ -149,6 +180,19 @@ def handle_search(message):
         playlist = user.get_playlists()
         playlist['sysdata--lsr'] = [track['id'] for track in response]
         sqlast_hope.set_user_attr(chat_id=message.chat.id, attr_name='playlists', value=user.pack_playlists(playlist))
+        if user.playlist == 'sysdata--lsr':
+            try:
+                track_id = user.track_id
+                markup = types.InlineKeyboardMarkup()
+                markup.row(types.InlineKeyboardButton('⏮️', callback_data="raise_end"),
+                           types.InlineKeyboardButton('➕', callback_data=f'to_pl:{track_id}'),
+                           types.InlineKeyboardButton('❤️' if track_id in user.get_liked() else '🤍',
+                                                      callback_data=f'like:{track_id}:0,2'),
+                           types.InlineKeyboardButton('⏭️', callback_data="raise_end"))
+                markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
+                bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=user.player_id, reply_markup=markup)
+            except telebot.apihelper.ApiTelegramException:
+                pass
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('play:'))
@@ -156,8 +200,18 @@ def play(call):
     track_id, playlist = ':'.join(call.data.split(':')[1:]).split('::')
     link = music_api.get_link(track_id)
     user = sqlast_hope.users[call.message.chat.id]
+    user_playlist = user.get_playlists()[playlist] if playlist != 'liked' else user.get_liked()
     meta = music_api.get_metadata(track_id)
     markup = types.InlineKeyboardMarkup()
+    like = types.InlineKeyboardButton('❤️' if track_id in user.get_liked() else '🤍',
+                                      callback_data=f"like:{track_id}:0,2")
+    next_callback = f'play:{user_playlist[user_playlist.index(track_id) + 1]}::{playlist}' if\
+        user_playlist.index(track_id) < len(user_playlist) - 1 else "raise_end"
+    prew_callback = f'play:{user_playlist[user_playlist.index(track_id) - 1]}::{playlist}' if\
+        user_playlist.index(track_id) > 0 else "raise_end"
+    markup.row(types.InlineKeyboardButton('⏮️', callback_data=prew_callback),
+               types.InlineKeyboardButton('➕', callback_data=f'to_pl:{track_id}'), like,
+               types.InlineKeyboardButton('⏭️', callback_data=next_callback))
     markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
     try:
         bot.delete_message(chat_id=call.message.chat.id, message_id=user.player_id)
@@ -167,6 +221,8 @@ def play(call):
         pid = bot.send_audio(audio=link, chat_id=call.message.chat.id, caption=meta, reply_markup=markup).id
         sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='player_id', value=pid)
         bot.answer_callback_query(callback_query_id=call.id, text=languages[user.language].get('downloaded', TE))
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='track_id', value=track_id)
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='playlist', value=playlist)
 
 
 @bot.message_handler(content_types=['text', 'audio', 'photo', 'video', 'media', 'file', 'voice', 'video_note'])
@@ -174,12 +230,84 @@ def deleter(message):
     bot.delete_message(message.chat.id, message.id)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('del'))
+@bot.callback_query_handler(func=lambda call: call.data == 'del')
 def del_player(call):
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
 
 
+@bot.callback_query_handler(func=lambda call: call.data == 'raise_end')
+def raise_end(call):
+    bot.answer_callback_query(callback_query_id=call.id,
+                              text=languages[sqlast_hope.users[call.message.chat.id].language].get('raise_end', TE))
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('like'))
+def like_track(call):
+    user = sqlast_hope.users[call.message.chat.id]
+    track_id = call.data.split(':')[1]
+    row, col = map(int, call.data.split(':')[2].split(','))
+    liked_tracks = user.get_liked()
+    markup = call.message.reply_markup
+    if track_id in liked_tracks:
+        like = '🤍'
+        liked_tracks.remove(track_id)
+        bot.answer_callback_query(callback_query_id=call.id, text=languages[user.language].get('del_liked', TE))
+    else:
+        like = '❤️'
+        liked_tracks.append(track_id)
+        bot.answer_callback_query(callback_query_id=call.id, text=languages[user.language].get('add_liked', TE))
+    markup.keyboard[row][col] = types.InlineKeyboardButton(like, callback_data=f'like:{track_id}:0,2')
+    bot.edit_message_reply_markup(message_id=call.message.id, reply_markup=markup, chat_id=call.message.chat.id)
+    if user.script == 'liked':
+        main_markup = types.InlineKeyboardMarkup()
+        for row_, elem in enumerate(liked_tracks):
+            like_b = types.InlineKeyboardButton('❤️', callback_data=f'like:{elem}:{row_},1')
+            main_markup.row(types.InlineKeyboardButton(music_api.get_metadata(elem),
+                                                       callback_data=f'play:{elem}::liked'), like_b)
+        main_markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE), callback_data='music'),
+                        types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
+        bot.edit_message_text(reply_markup=main_markup, chat_id=call.message.chat.id, message_id=user.message_id,
+                              text=languages[user.language].get('liked_text' if liked_tracks else 'empty_liked', TE))
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='liked', value=user.pack_liked(liked_tracks))
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('new_pl'))
+def create_playlist(call):
+    user = sqlast_hope.users[call.message.chat.id]
+    markup = types.InlineKeyboardMarkup()
+    markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE), callback_data='playlists'),
+               types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=markup,
+                          text=languages[user.language].get('new_pl_text', TE))
+    bot.register_next_step_handler(call.message, pl_name_handler)
+
+
+def pl_name_handler(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    user = sqlast_hope.users[message.chat.id]
+    playlists = user.get_playlists()
+    markup = types.InlineKeyboardMarkup()
+    markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE), callback_data='playlists'),
+               types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
+    if '::' in message.text or ';;' in message.text or 'sysdata' in message.text or message.text in playlists.keys():
+        bot.register_next_step_handler(message, pl_name_handler)
+        try:
+            bot.edit_message_text(chat_id=message.chat.id, message_id=user.message_id, reply_markup=markup,
+                                  text=languages[user.language].get('incorr_pl_name', TE))
+        except telebot.apihelper.ApiTelegramException:
+            pass
+        return
+    playlists[message.text] = {}
+    sqlast_hope.set_user_attr(chat_id=message.chat.id, attr_name='playlists', value=user.pack_playlists(playlists))
+    bot.edit_message_text(chat_id=message.chat.id, message_id=user.message_id, reply_markup=markup,
+                          text=languages[user.language].get('created_pl_text', TE))
+
+
 if __name__ == '__main__':
-    bot.remove_webhook()
-    print('initialize completed')
-    bot.infinity_polling()
+    try:
+        bot.remove_webhook()
+        print('initialize completed')
+        bot.infinity_polling()
+    except Exception as e:
+        print(f'crushed: {e}')
+        sqlast_hope.try_commit()

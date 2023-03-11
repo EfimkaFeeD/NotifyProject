@@ -10,6 +10,9 @@ class User(SqlAlchemyBase):
     liked = sqlalchemy.Column(sqlalchemy.String, default='')
     language = sqlalchemy.Column(sqlalchemy.String, default='')
     playlists = sqlalchemy.Column(sqlalchemy.String, default='')
+    script = sqlalchemy.Column(sqlalchemy.String, default='')
+    track_id = sqlalchemy.Column(sqlalchemy.Integer, default=0)
+    playlist = sqlalchemy.Column(sqlalchemy.String, default='')
 
     def get_playlists(self):
         if not self.playlists:
@@ -18,6 +21,8 @@ class User(SqlAlchemyBase):
         for pl in self.playlists.split(';;'):
             name = pl.split('::')[0]
             traks = pl.split('::')[1].split(',,')
+            if not traks[0]:
+                traks = []
             response[name] = traks
         return response
 
@@ -27,9 +32,12 @@ class User(SqlAlchemyBase):
         return self.liked.split(',,')
 
     def pack_liked(self, data):
-        self.liked = ' '.join(data)
+        self.liked = ',,'.join(data)
         return self.liked
 
     def pack_playlists(self, data):
         self.playlists = ';;'.join([f'{key}::{",,".join([str(i) for i in elem])}'for key, elem in data.items()])
         return self.playlists
+
+    def get_player_script(self):
+        return self.player_script.split('::')

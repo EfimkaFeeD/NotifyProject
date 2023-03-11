@@ -6,5 +6,9 @@
   "music_main_text": "Welcome to music world!", "playlists_text": "It is your playlists", "playlist_text": "Chosen playlist: ", "liked_text": "It is your liked tracks",
     "empty_playlists": "You have no playlists yet", "new_pl": "➕Create new", "search": "Search\uD83D\uDD0E", "search_text": "Enter search query or Yandex.Music link in message",
   "search_response_text": "Search results", "now_played": "Now played: ", "close": "Close❌", "lsr": "Last search results",
-    "empty_response": "Not results", "downloaded": "Track downloaded"}
+    "empty_response": "Not results", "downloaded": "Track downloaded", "raise_end": "Playlist ended", "add_liked": "Track added to Favorites",
+    "del_liked": "Track removed from Favorites", "empty_liked": "You have no liked tracks", "empty_playlist": "This is empty playlist",
+  "new_pl_text": "Enter a name for a new playlist",
+    "incorr_pl_name": "Invalid playlist name. It is possible that a playlist with this name already exists, or invalid special characters are used in the name",
+  "created_pl_text": "Playlist created"}
 }
