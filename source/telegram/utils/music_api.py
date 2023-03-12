@@ -34,5 +34,6 @@ def parse_link(link):
     try:
         re = link.split('/')[6]
         return int(re[:re.index('?')])
-    except IndexError and TypeError:
+    except Exception as e:
+        print(f'cannot parse {link}: {e}')
         return False

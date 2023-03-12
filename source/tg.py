@@ -218,7 +218,11 @@ def play(call):
     except telebot.apihelper.ApiTelegramException:
         pass
     finally:
-        pid = bot.send_audio(audio=link, chat_id=call.message.chat.id, caption=meta, reply_markup=markup).id
+        pl_name = playlist if playlist != 'sysdata--lsr' else languages[user.language].get('lsr', TE)
+        pl_name = pl_name if pl_name != 'liked' else languages[user.language].get('liked', TE)
+        index = f'{user_playlist.index(track_id) + 1}/{len(user_playlist)}'
+        pid = bot.send_audio(audio=link, chat_id=call.message.chat.id, reply_markup=markup,
+                             caption=f"{meta}\n{languages[user.language].get('from_pl', TE)}{pl_name}\n{index}").id
         sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='player_id', value=pid)
         bot.answer_callback_query(callback_query_id=call.id, text=languages[user.language].get('downloaded', TE))
     sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='track_id', value=track_id)
@@ -248,13 +252,28 @@ def like_track(call):
     row, col = map(int, call.data.split(':')[2].split(','))
     liked_tracks = user.get_liked()
     markup = call.message.reply_markup
+    next_callback, prew_callback = None, None
     if track_id in liked_tracks:
+        if track_id == user.track_id:
+            next_callback = f'play:{liked_tracks[liked_tracks.index(user.track_id) + 1]}::liked' if \
+                liked_tracks.index(user.track_id) < len(liked_tracks) - 1 else "raise_end"
+            prew_callback = f'play:{liked_tracks[liked_tracks.index(user.track_id) - 1]}::liked' if \
+                liked_tracks.index(user.track_id) > 0 else "raise_end"
         like = '🤍'
         liked_tracks.remove(track_id)
+        if track_id != user.track_id:
+            next_callback = f'play:{liked_tracks[liked_tracks.index(user.track_id) + 1]}::liked' if \
+                liked_tracks.index(user.track_id) < len(liked_tracks) - 1 else "raise_end"
+            prew_callback = f'play:{liked_tracks[liked_tracks.index(user.track_id) - 1]}::liked' if \
+                liked_tracks.index(user.track_id) > 0 else "raise_end"
         bot.answer_callback_query(callback_query_id=call.id, text=languages[user.language].get('del_liked', TE))
     else:
         like = '❤️'
         liked_tracks.append(track_id)
+        next_callback = f'play:{liked_tracks[liked_tracks.index(user.track_id) + 1]}::liked' if \
+            liked_tracks.index(user.track_id) < len(liked_tracks) - 1 else "raise_end"
+        prew_callback = f'play:{liked_tracks[liked_tracks.index(user.track_id) - 1]}::liked' if \
+            liked_tracks.index(user.track_id) > 0 else "raise_end"
         bot.answer_callback_query(callback_query_id=call.id, text=languages[user.language].get('add_liked', TE))
     markup.keyboard[row][col] = types.InlineKeyboardButton(like, callback_data=f'like:{track_id}:0,2')
     bot.edit_message_reply_markup(message_id=call.message.id, reply_markup=markup, chat_id=call.message.chat.id)
@@ -269,6 +288,21 @@ def like_track(call):
         bot.edit_message_text(reply_markup=main_markup, chat_id=call.message.chat.id, message_id=user.message_id,
                               text=languages[user.language].get('liked_text' if liked_tracks else 'empty_liked', TE))
     sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='liked', value=user.pack_liked(liked_tracks))
+    if user.playlist == 'liked':
+        try:
+            markup = types.InlineKeyboardMarkup()
+            markup.row(types.InlineKeyboardButton('⏮️', callback_data=prew_callback),
+                       types.InlineKeyboardButton('➕', callback_data=f'to_pl:{user.track_id}'),
+                       types.InlineKeyboardButton(like, callback_data=f'like:{user.track_id}:0,2'),
+                       types.InlineKeyboardButton('⏭️', callback_data=next_callback))
+            markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
+            bot.edit_message_reply_markup(reply_markup=markup, message_id=user.player_id, chat_id=user.chat_id)
+            pl_name = languages[user.language].get('liked', TE)
+            index = f'{liked_tracks.index(track_id) + 1}/{len(liked_tracks)}'
+            bot.edit_message_caption(caption=f"{music_api.get_metadata(user.track_id)}\n"
+                                             f"{languages[user.language].get('from_pl', TE)}{pl_name}\n{index}")
+        except telebot.apihelper.ApiTelegramException:
+            pass
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('new_pl'))
