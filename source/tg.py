@@ -194,7 +194,11 @@ def handle_search(message):
                                                       callback_data=f'like:{track_id}:0,2'),
                            types.InlineKeyboardButton('⏭️', callback_data="raise_end"))
                 markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
-                bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=user.player_id, reply_markup=markup)
+                caption = f"{music_api.get_metadata(track_id)}\n{languages[user.language].get('from_pl', TE)}" \
+                          f"{languages[user.language].get('lsr', TE)}\n" \
+                          f"{languages[user.language].get('rem_from_pl', TE)}"
+                bot.edit_message_caption(chat_id=message.chat.id, message_id=user.player_id, reply_markup=markup,
+                                         caption=caption)
             except telebot.apihelper.ApiTelegramException:
                 pass
     sqlast_hope.set_user_attr(chat_id=message.chat.id, attr_name='script', value='playlist_view::sysdata--lsr')
@@ -320,10 +324,13 @@ def like_track(call):
     if user.playlist == 'liked' or track_id == user.track_id:
         cur_playlist = user.get_playlists()[user.playlist] if user.playlist != 'liked' else liked_tracks
         if not prew_callback:
-            next_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) + 1]}::liked' if \
-                cur_playlist.index(user.track_id) < len(cur_playlist) - 1 else "raise_end"
-            prew_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) - 1]}::liked' if \
-                cur_playlist.index(user.track_id) > 0 else "raise_end"
+            if track_id in cur_playlist:
+                next_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) + 1]}::liked' if \
+                    cur_playlist.index(user.track_id) < len(cur_playlist) - 1 else "raise_end"
+                prew_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) - 1]}::liked' if \
+                    cur_playlist.index(user.track_id) > 0 else "raise_end"
+            else:
+                prew_callback = next_callback = 'raise_end'
         try:
             markup = types.InlineKeyboardMarkup()
             markup.row(types.InlineKeyboardButton('⏮️', callback_data=prew_callback),
