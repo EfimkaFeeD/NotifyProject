@@ -126,6 +126,7 @@ def playlist_view(call):
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.id, reply_markup=markup,
                           text=(languages[user.language].get("playlist_text", TE) + text) if u else
                           languages[user.language].get("empty_playlist", TE))
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value=f'playlist_view::{pl_name}::s')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'liked')
@@ -174,8 +175,11 @@ def handle_search(message):
     markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE),
                                           callback_data='search'),
                types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
-    bot.edit_message_text(chat_id=message.chat.id, message_id=user.message_id, reply_markup=markup,
-                          text=languages[user.language].get('search_response_text' if u else "empty_response", TE))
+    try:
+        bot.edit_message_text(chat_id=message.chat.id, message_id=user.message_id, reply_markup=markup,
+                              text=languages[user.language].get('search_response_text' if u else "empty_response", TE))
+    except telebot.apihelper.ApiTelegramException:
+        pass
     if u:
         playlist = user.get_playlists()
         playlist['sysdata--lsr'] = [track['id'] for track in response]
@@ -193,7 +197,7 @@ def handle_search(message):
                 bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=user.player_id, reply_markup=markup)
             except telebot.apihelper.ApiTelegramException:
                 pass
-    sqlast_hope.set_user_attr(chat_id=message.chat.id, attr_name='script', value='search_result')
+    sqlast_hope.set_user_attr(chat_id=message.chat.id, attr_name='script', value='playlist_view::sysdata--lsr')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('play:'))
@@ -290,22 +294,36 @@ def like_track(call):
                         types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
         bot.edit_message_text(reply_markup=main_markup, chat_id=call.message.chat.id, message_id=user.message_id,
                               text=languages[user.language].get('liked_text' if liked_tracks else 'empty_liked', TE))
-    elif user.script == 'search_results':
+    elif user.script.startswith('playlist_view') and track_id in user.get_playlists()[user.script.split('::')[1]]:
+        pl_name = user.script.split('::')[1]
         markup = types.InlineKeyboardMarkup()
-        response = user.get_playlists()['sysdata--lsr']
+        texts = ['search_response_text', 'empty_response', 'search'] if len(user.script.split('::')) == 2 else \
+            ['playlist_text', 'empty_playlist', 'playlists']
+        response = user.get_playlists()[pl_name]
         u = False
         for row, elem in enumerate(response):
             u = True
-            like_b = types.InlineKeyboardButton('❤️' if str(elem['id']) in liked_tracks else '🤍',
-                                                callback_data=f'like:{elem["id"]}:{row},1')
-            markup.row(types.InlineKeyboardButton(elem['name'], callback_data=f"play:{elem['id']}::sysdata--lsr"),
-                       like_b)
+            like_b = types.InlineKeyboardButton('❤️' if elem in liked_tracks else '🤍',
+                                                callback_data=f'like:{elem}:{row},1')
+            markup.row(types.InlineKeyboardButton(music_api.get_metadata(elem),
+                                                  callback_data=f"play:{elem}::{pl_name}"), like_b)
         markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE),
-                                              callback_data='search'),
+                                              callback_data=texts[2]),
                    types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
-        bot.edit_message_text(chat_id=user.chat_id, message_id=user.message_id, reply_markup=markup,
-                              text=languages[user.language].get('search_response_text' if u else "empty_response", TE))
-    if user.playlist == 'liked':
+        pl_name = pl_name if pl_name != 'sysdata--lsr' else languages[user.language].get('lsr', TE)
+        pl_name = '' if texts[2] == 'search' else pl_name
+        try:
+            bot.edit_message_text(chat_id=user.chat_id, message_id=user.message_id, reply_markup=markup,
+                                  text=languages[user.language].get(texts[0] if u else texts[1], TE) + pl_name)
+        except telebot.apihelper.ApiTelegramException:
+            pass
+    if user.playlist == 'liked' or track_id == user.track_id:
+        cur_playlist = user.get_playlists()[user.playlist] if user.playlist != 'liked' else liked_tracks
+        if not prew_callback:
+            next_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) + 1]}::liked' if \
+                cur_playlist.index(user.track_id) < len(cur_playlist) - 1 else "raise_end"
+            prew_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) - 1]}::liked' if \
+                cur_playlist.index(user.track_id) > 0 else "raise_end"
         try:
             markup = types.InlineKeyboardMarkup()
             markup.row(types.InlineKeyboardButton('⏮️', callback_data=prew_callback),
@@ -313,9 +331,10 @@ def like_track(call):
                        types.InlineKeyboardButton(like, callback_data=f'like:{user.track_id}:0,2'),
                        types.InlineKeyboardButton('⏭️', callback_data=next_callback))
             markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
-            pl_name = languages[user.language].get('liked', TE)
-            index = f'{(liked_tracks.index(user.track_id)) + 1}/{len(liked_tracks)}'\
-                if user.track_id in liked_tracks else languages[user.language].get('rem_from_pl', TE)
+            pl_name = user.playlist if user.playlist != 'sysdata--lsr' else languages[user.language].get('lsr', TE)
+            pl_name = pl_name if pl_name != 'liked' else languages[user.language].get('liked', TE)
+            index = f'{(cur_playlist.index(user.track_id)) + 1}/{len(cur_playlist)}'\
+                if user.track_id in cur_playlist else languages[user.language].get('rem_from_pl', TE)
             bot.edit_message_caption(caption=f"{music_api.get_metadata(user.track_id)}\n"
                                              f"{languages[user.language].get('from_pl', TE)}{pl_name}\n{index}",
                                      message_id=user.player_id, chat_id=user.chat_id, reply_markup=markup)
