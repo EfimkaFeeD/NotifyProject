@@ -10,5 +10,6 @@
     "del_liked": "Track removed from Favorites", "empty_liked": "You have no liked tracks", "empty_playlist": "This is empty playlist",
   "new_pl_text": "Enter a name for a new playlist",
     "incorr_pl_name": "Invalid playlist name. It is possible that a playlist with this name already exists, or invalid special characters are used in the name",
-  "created_pl_text": "Playlist created", "from_pl": "From playlist: ", "rem_from_pl": "Removed from playlist"}
+  "created_pl_text": "Playlist created", "from_pl": "From playlist: ", "rem_from_pl": "Removed from playlist", "pl_adding_text": "Select the playlist you would like to add a track to",
+  "suc_add": "Track added to playlist", "all_added": "The track is already in all playlists"}
 }

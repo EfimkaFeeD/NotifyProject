@@ -189,7 +189,7 @@ def handle_search(message):
                 track_id = user.track_id
                 markup = types.InlineKeyboardMarkup()
                 markup.row(types.InlineKeyboardButton('⏮️', callback_data="raise_end"),
-                           types.InlineKeyboardButton('➕', callback_data=f'to_pl:{track_id}'),
+                           types.InlineKeyboardButton('➕', callback_data=f'to_pl::{track_id}'),
                            types.InlineKeyboardButton('❤️' if track_id in user.get_liked() else '🤍',
                                                       callback_data=f'like:{track_id}:0,2'),
                            types.InlineKeyboardButton('⏭️', callback_data="raise_end"))
@@ -219,7 +219,7 @@ def play(call):
     prew_callback = f'play:{user_playlist[user_playlist.index(track_id) - 1]}::{playlist}' if\
         user_playlist.index(track_id) > 0 else "raise_end"
     markup.row(types.InlineKeyboardButton('⏮️', callback_data=prew_callback),
-               types.InlineKeyboardButton('➕', callback_data=f'to_pl:{track_id}'), like,
+               types.InlineKeyboardButton('➕', callback_data=f'to_pl::{track_id}'), like,
                types.InlineKeyboardButton('⏭️', callback_data=next_callback))
     markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
     try:
@@ -334,7 +334,7 @@ def like_track(call):
         try:
             markup = types.InlineKeyboardMarkup()
             markup.row(types.InlineKeyboardButton('⏮️', callback_data=prew_callback),
-                       types.InlineKeyboardButton('➕', callback_data=f'to_pl:{user.track_id}'),
+                       types.InlineKeyboardButton('➕', callback_data=f'to_pl::{user.track_id}'),
                        types.InlineKeyboardButton(like, callback_data=f'like:{user.track_id}:0,2'),
                        types.InlineKeyboardButton('⏭️', callback_data=next_callback))
             markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
@@ -379,6 +379,63 @@ def pl_name_handler(message):
     sqlast_hope.set_user_attr(chat_id=message.chat.id, attr_name='playlists', value=user.pack_playlists(playlists))
     bot.edit_message_text(chat_id=message.chat.id, message_id=user.message_id, reply_markup=markup,
                           text=languages[user.language].get('created_pl_text', TE))
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('to_pl'))
+def add_to_playlist_view(call):
+    track_id = call.data.split("::")[1]
+    user = sqlast_hope.users[call.message.chat.id]
+    markup = types.InlineKeyboardMarkup()
+    playlists = user.get_playlists()
+    u = False
+    for elem in playlists.keys():
+        if track_id in playlists[elem] or elem == 'sysdata--lsr':
+            continue
+        u = True
+        markup.row(types.InlineKeyboardButton(elem, callback_data=f'add::{track_id}::{elem}'))
+    markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE), callback_data='playlists'),
+               types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
+    try:
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=user.message_id, reply_markup=markup,
+                              text=languages[user.language].get('pl_adding_text' if u else 'all_added', TE))
+    except telebot.apihelper.ApiTelegramException:
+        pass
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='script', value='adding')
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('add'))
+def add_to_pl(call):
+    track_id, playlist = call.data.split("::")[1], call.data.split("::")[2]
+    user = sqlast_hope.users[call.message.chat.id]
+    markup = types.InlineKeyboardMarkup()
+    markup.row(types.InlineKeyboardButton(languages[user.language].get('back', TE),
+                                          callback_data=f'to_pl::{track_id}::{playlist}'),
+               types.InlineKeyboardButton(languages[user.language].get('home', TE), callback_data='home'))
+    playlists = user.get_playlists()
+    playlists[playlist].append(track_id)
+    sqlast_hope.set_user_attr(chat_id=call.message.chat.id, attr_name='playlists', value=user.pack_playlists(playlists))
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=user.message_id,
+                          text=languages[user.language].get('suc_add', TE), reply_markup=markup)
+    if user.playlist == playlist:
+        try:
+            markup = types.InlineKeyboardMarkup()
+            cur_playlist = playlists[playlist]
+            next_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) + 1]}::{playlist}' if \
+                cur_playlist.index(user.track_id) < len(cur_playlist) - 1 else "raise_end"
+            prew_callback = f'play:{cur_playlist[cur_playlist.index(user.track_id) - 1]}::{playlist}' if \
+                cur_playlist.index(user.track_id) > 0 else "raise_end"
+            markup.row(types.InlineKeyboardButton('⏮️', callback_data=prew_callback),
+                       types.InlineKeyboardButton('➕', callback_data=f'to_pl::{user.track_id}'),
+                       types.InlineKeyboardButton('❤️' if track_id in user.get_liked() else '🤍',
+                                                  callback_data=f'like:{user.track_id}:0,2'),
+                       types.InlineKeyboardButton('⏭️', callback_data=next_callback))
+            markup.row(types.InlineKeyboardButton(languages[user.language].get('close', TE), callback_data='del'))
+            index = f'{(cur_playlist.index(user.track_id)) + 1}/{len(cur_playlist)}'
+            bot.edit_message_caption(caption=f"{music_api.get_metadata(user.track_id)}\n"
+                                             f"{languages[user.language].get('from_pl', TE)}{playlist}\n{index}",
+                                     message_id=user.player_id, chat_id=user.chat_id, reply_markup=markup)
+        except telebot.apihelper.ApiTelegramException:
+            pass
 
 
 if __name__ == '__main__':
